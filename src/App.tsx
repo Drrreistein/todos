@@ -1,5 +1,5 @@
 import { useReducer, useEffect, useState, useRef } from 'react'
-import { todoReducer, loadTodos, saveTodos, type Todo } from './todo'
+import { todoReducer, loadTodos, saveTodos, exportTodos, parseTodosFromJson, type Todo } from './todo'
 import Heatmap from './Heatmap'
 
 // ── SVG 图标（内联，零依赖）────────────────────
@@ -25,6 +25,101 @@ function IconX() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
       <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  )
+}
+
+// ── 隐蔽的导入/导出菜单 ──────────────────────────
+
+interface DataMenuProps {
+  todos: Todo[]
+  onImport: (todos: Todo[]) => void
+}
+
+function DataMenu({ todos, onImport }: DataMenuProps) {
+  const [open, setOpen] = useState(false)
+  const [hint, setHint] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // 点击菜单外部关闭
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  function handleExport() {
+    exportTodos(todos)
+    setOpen(false)
+  }
+
+  function handleImportClick() {
+    fileRef.current?.click()
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string
+      const parsed = parseTodosFromJson(text)
+      if (!parsed) {
+        setHint('文件格式不正确')
+        setTimeout(() => setHint(null), 2500)
+      } else {
+        onImport(parsed)
+        setHint(`已导入 ${parsed.length} 条`)
+        setTimeout(() => setHint(null), 2000)
+      }
+    }
+    reader.readAsText(file)
+    // 重置，允许再次选同一文件
+    e.target.value = ''
+    setOpen(false)
+  }
+
+  return (
+    <div className="data-menu-wrap" ref={menuRef}>
+      {/* 触发按钮：固定在右下角 */}
+      <button
+        className="data-menu-trigger"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="数据菜单"
+        title="导入 / 导出"
+      >
+        ···
+      </button>
+
+      {/* 弹出菜单 */}
+      {open && (
+        <div className="data-menu-popup" role="menu">
+          <button className="data-menu-item" onClick={handleExport} role="menuitem">
+            导出 JSON
+          </button>
+          <button className="data-menu-item" onClick={handleImportClick} role="menuitem">
+            导入 JSON
+          </button>
+        </div>
+      )}
+
+      {/* 隐藏文件输入 */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".json,application/json"
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+      />
+
+      {/* 轻提示 */}
+      {hint && <div className="data-menu-hint">{hint}</div>}
+    </div>
   )
 }
 
@@ -234,6 +329,12 @@ export default function App() {
 
       {/* 每日完成热力图 */}
       <Heatmap todos={todos} />
+
+      {/* 隐蔽的导入/导出入口 */}
+      <DataMenu
+        todos={todos}
+        onImport={(imported) => dispatch({ type: 'IMPORT', todos: imported })}
+      />
     </main>
   )
 }
