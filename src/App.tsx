@@ -1,5 +1,6 @@
 import { useReducer, useEffect, useState, useRef } from 'react'
 import { todoReducer, loadTodos, saveTodos, type Todo } from './todo'
+import Heatmap from './Heatmap'
 
 // ── SVG 图标（内联，零依赖）────────────────────
 
@@ -230,6 +231,9 @@ export default function App() {
           )}
         </footer>
       )}
+
+      {/* 每日完成热力图 */}
+      <Heatmap todos={todos} />
     </main>
   )
 }

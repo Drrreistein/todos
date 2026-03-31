@@ -301,6 +301,92 @@ input {
   animation: slideIn var(--transition) ease forwards;
 }
 
+/* ── 热力图 ── */
+.heatmap-section {
+  margin-top: 48px;
+  padding-top: 32px;
+  border-top: 1px solid var(--color-border);
+}
+
+.heatmap-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.heatmap-title {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.heatmap-subtitle {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.heatmap-wrap {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.heatmap-months {
+  display: flex;
+  margin-bottom: 4px;
+  padding-left: 0;
+}
+
+.heatmap-month-label {
+  font-size: 0.625rem;
+  color: var(--color-text-muted);
+  text-align: left;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.heatmap-grid {
+  display: flex;
+}
+
+.heatmap-col {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.heatmap-cell {
+  border-radius: 2px;
+  flex-shrink: 0;
+  transition: opacity var(--transition);
+}
+
+.heatmap-cell.today {
+  outline: 1.5px solid var(--color-text-secondary);
+  outline-offset: 1px;
+}
+
+.heatmap-cell:hover {
+  opacity: 0.75;
+}
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 8px;
+  justify-content: flex-end;
+}
+
+.legend-label {
+  font-size: 0.625rem;
+  color: var(--color-text-muted);
+  margin: 0 2px;
+}
+
 /* ── 响应式 ── */
 @media (max-width: 480px) {
   .app {

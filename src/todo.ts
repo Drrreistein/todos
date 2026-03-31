@@ -4,6 +4,7 @@ export interface Todo {
   text: string
   completed: boolean
   createdAt: number
+  completedAt?: number  // 最近一次被标为完成的时间戳
 }
 
 // Action 类型
@@ -29,7 +30,13 @@ export function todoReducer(state: Todo[], action: TodoAction): Todo[] {
       ]
     case 'TOGGLE':
       return state.map((todo) =>
-        todo.id === action.id ? { ...todo, completed: !todo.completed } : todo
+        todo.id === action.id
+          ? {
+              ...todo,
+              completed: !todo.completed,
+              completedAt: !todo.completed ? Date.now() : todo.completedAt,
+            }
+          : todo
       )
     case 'EDIT':
       return state.map((todo) =>
