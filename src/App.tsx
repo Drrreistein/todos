@@ -33,6 +33,8 @@ export default function App() {
   const [todos, dispatch] = useReducer(todoReducer, [], loadTodos)
   const [input, setInput] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  // IME 组字状态：true 表示正在用输入法选字，此时 Enter 不应提交
+  const isComposingRef = useRef(false)
 
   // 每次 todos 变化时持久化
   useEffect(() => {
@@ -48,9 +50,9 @@ export default function App() {
     inputRef.current?.focus()
   }
 
-  // 键盘事件
+  // 键盘事件：IME 组字期间忽略 Enter
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter') handleSubmit()
+    if (e.key === 'Enter' && !isComposingRef.current) handleSubmit()
   }
 
   const remaining = todos.filter((t) => !t.completed).length
@@ -73,6 +75,8 @@ export default function App() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
+          onCompositionStart={() => { isComposingRef.current = true }}
+          onCompositionEnd={() => { isComposingRef.current = false }}
           autoFocus
           aria-label="新建待办事项"
         />
