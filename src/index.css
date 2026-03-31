@@ -205,12 +205,32 @@ input {
   line-height: 1.5;
   transition: color var(--transition), text-decoration-color var(--transition);
   word-break: break-word;
+  cursor: default;
+}
+
+.todo-text:hover {
+  color: var(--color-text-primary);
 }
 
 .todo-text.done {
   color: var(--color-done-text);
   text-decoration: line-through;
   text-decoration-color: var(--color-text-muted);
+}
+
+/* ── 行内编辑输入框 ── */
+.todo-edit-input {
+  flex: 1;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  color: var(--color-text-primary);
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid var(--color-border-focus);
+  outline: none;
+  padding: 0 2px;
+  line-height: 1.5;
+  border-radius: 0;
 }
 
 /* ── 删除按钮 ── */

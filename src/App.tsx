@@ -1,5 +1,5 @@
 import { useReducer, useEffect, useState, useRef } from 'react'
-import { todoReducer, loadTodos, saveTodos } from './todo'
+import { todoReducer, loadTodos, saveTodos, type Todo } from './todo'
 
 // ── SVG 图标（内联，零依赖）────────────────────
 
@@ -24,6 +24,111 @@ function IconX() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
       <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  )
+}
+
+// ── 单条待办（带行内编辑）────────────────────────
+
+interface TodoItemProps {
+  todo: Todo
+  onToggle: (id: string) => void
+  onEdit: (id: string, text: string) => void
+  onDelete: (id: string) => void
+}
+
+function TodoItem({ todo, onToggle, onEdit, onDelete }: TodoItemProps) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(todo.text)
+  const editRef = useRef<HTMLInputElement>(null)
+  const editComposingRef = useRef(false)
+
+  // 进入编辑模式时聚焦并全选
+  useEffect(() => {
+    if (editing) {
+      editRef.current?.focus()
+      editRef.current?.select()
+    }
+  }, [editing])
+
+  function startEdit() {
+    setDraft(todo.text)
+    setEditing(true)
+  }
+
+  function commitEdit() {
+    const text = draft.trim()
+    if (text && text !== todo.text) {
+      onEdit(todo.id, text)
+    } else {
+      setDraft(todo.text) // 放弃空内容修改
+    }
+    setEditing(false)
+  }
+
+  function cancelEdit() {
+    setDraft(todo.text)
+    setEditing(false)
+  }
+
+  function handleEditKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' && !editComposingRef.current) {
+      e.preventDefault()
+      commitEdit()
+    } else if (e.key === 'Escape') {
+      cancelEdit()
+    }
+  }
+
+  return (
+    <li className="todo-item">
+      {/* 复选框 */}
+      <button
+        className={`checkbox-btn${todo.completed ? ' checked' : ''}`}
+        onClick={() => onToggle(todo.id)}
+        aria-label={todo.completed ? '标记为未完成' : '标记为完成'}
+        aria-pressed={todo.completed}
+      >
+        <IconCheck />
+      </button>
+
+      {/* 文字 / 编辑输入框 */}
+      {editing ? (
+        <input
+          ref={editRef}
+          className="todo-edit-input"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={handleEditKeyDown}
+          onCompositionStart={() => { editComposingRef.current = true }}
+          onCompositionEnd={() => { editComposingRef.current = false }}
+          onBlur={commitEdit}
+          aria-label="编辑待办事项"
+        />
+      ) : (
+        <span
+          className={`todo-text${todo.completed ? ' done' : ''}`}
+          onDoubleClick={startEdit}
+          title="双击编辑"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'F2') startEdit() }}
+          aria-label={`${todo.text}，双击编辑`}
+        >
+          {todo.text}
+        </span>
+      )}
+
+      {/* 删除 */}
+      {!editing && (
+        <button
+          className="delete-btn"
+          onClick={() => onDelete(todo.id)}
+          aria-label={`删除：${todo.text}`}
+        >
+          <IconX />
+        </button>
+      )}
+    </li>
   )
 }
 
@@ -96,31 +201,13 @@ export default function App() {
       ) : (
         <ul className="todo-list" aria-label="待办列表">
           {todos.map((todo) => (
-            <li key={todo.id} className="todo-item">
-              {/* 复选框 */}
-              <button
-                className={`checkbox-btn${todo.completed ? ' checked' : ''}`}
-                onClick={() => dispatch({ type: 'TOGGLE', id: todo.id })}
-                aria-label={todo.completed ? '标记为未完成' : '标记为完成'}
-                aria-pressed={todo.completed}
-              >
-                <IconCheck />
-              </button>
-
-              {/* 文字 */}
-              <span className={`todo-text${todo.completed ? ' done' : ''}`}>
-                {todo.text}
-              </span>
-
-              {/* 删除 */}
-              <button
-                className="delete-btn"
-                onClick={() => dispatch({ type: 'DELETE', id: todo.id })}
-                aria-label={`删除：${todo.text}`}
-              >
-                <IconX />
-              </button>
-            </li>
+            <TodoItem
+              key={todo.id}
+              todo={todo}
+              onToggle={(id) => dispatch({ type: 'TOGGLE', id })}
+              onEdit={(id, text) => dispatch({ type: 'EDIT', id, text })}
+              onDelete={(id) => dispatch({ type: 'DELETE', id })}
+            />
           ))}
         </ul>
       )}
