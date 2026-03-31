@@ -1,0 +1,293 @@
+/* ─────────────────────────────────────────────
+   极简待办清单 · 全局样式
+   设计原则：黑白灰，宽留白，系统字体，克制动效
+   ───────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --color-bg: #fafafa;
+  --color-surface: #ffffff;
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #6b7280;
+  --color-text-muted: #d1d5db;
+  --color-border: #e5e7eb;
+  --color-border-focus: #1a1a1a;
+  --color-check-bg: #1a1a1a;
+  --color-done-text: #9ca3af;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --transition: 150ms ease;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue',
+    Arial, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  min-height: 100dvh;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+}
+
+input {
+  font-family: inherit;
+}
+
+/* ── 页面容器 ── */
+.app {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 80px 24px 120px;
+  min-height: 100dvh;
+}
+
+/* ── 标题区域 ── */
+.app-header {
+  margin-bottom: 48px;
+}
+
+.app-title {
+  font-size: 2.5rem;
+  font-weight: 300;
+  letter-spacing: -0.04em;
+  color: var(--color-text-primary);
+  line-height: 1;
+  user-select: none;
+}
+
+/* ── 输入区域 ── */
+.input-area {
+  display: flex;
+  gap: 0;
+  margin-bottom: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  transition: border-color var(--transition);
+}
+
+.input-area:focus-within {
+  border-color: var(--color-border-focus);
+}
+
+.todo-input {
+  flex: 1;
+  padding: 14px 16px;
+  font-size: 0.9375rem;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--color-text-primary);
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+.todo-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.add-btn {
+  padding: 14px 18px;
+  color: var(--color-text-secondary);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  transition: color var(--transition), background-color var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-btn:hover {
+  color: var(--color-text-primary);
+  background-color: #f3f4f6;
+}
+
+.add-btn svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.75;
+}
+
+/* ── 待办列表 ── */
+.todo-list {
+  list-style: none;
+}
+
+/* ── 空状态 ── */
+.empty-state {
+  text-align: center;
+  padding: 48px 0;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  letter-spacing: 0.02em;
+}
+
+/* ── 单条待办 ── */
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 8px;
+  border-bottom: 1px solid var(--color-border);
+  group: true;
+  transition: background-color var(--transition);
+  border-radius: var(--radius-sm);
+}
+
+.todo-item:first-child {
+  border-top: 1px solid var(--color-border);
+}
+
+.todo-item:hover {
+  background-color: #f9fafb;
+}
+
+.todo-item:hover .delete-btn {
+  opacity: 1;
+}
+
+/* ── 自定义复选框 ── */
+.checkbox-btn {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color var(--transition), background-color var(--transition);
+  position: relative;
+}
+
+.checkbox-btn:hover {
+  border-color: var(--color-text-secondary);
+}
+
+.checkbox-btn.checked {
+  background-color: var(--color-check-bg);
+  border-color: var(--color-check-bg);
+}
+
+.checkbox-btn svg {
+  width: 11px;
+  height: 11px;
+  stroke: white;
+  stroke-width: 2.5;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.checkbox-btn.checked svg {
+  opacity: 1;
+}
+
+/* ── 待办文字 ── */
+.todo-text {
+  flex: 1;
+  font-size: 0.9375rem;
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  transition: color var(--transition), text-decoration-color var(--transition);
+  word-break: break-word;
+}
+
+.todo-text.done {
+  color: var(--color-done-text);
+  text-decoration: line-through;
+  text-decoration-color: var(--color-text-muted);
+}
+
+/* ── 删除按钮 ── */
+.delete-btn {
+  flex-shrink: 0;
+  opacity: 0;
+  padding: 4px;
+  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  transition: opacity var(--transition), color var(--transition),
+    background-color var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-btn:hover {
+  color: var(--color-text-secondary);
+  background-color: #f3f4f6;
+}
+
+.delete-btn svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.75;
+}
+
+/* ── 底部状态栏 ── */
+.footer {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+}
+
+.item-count {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.clear-btn {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition), background-color var(--transition);
+}
+
+.clear-btn:hover {
+  color: var(--color-text-primary);
+  background-color: #f3f4f6;
+}
+
+/* ── 条目进入/离开动画 ── */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.todo-item {
+  animation: slideIn var(--transition) ease forwards;
+}
+
+/* ── 响应式 ── */
+@media (max-width: 480px) {
+  .app {
+    padding: 48px 16px 80px;
+  }
+
+  .app-title {
+    font-size: 2rem;
+  }
+}
