@@ -10,6 +10,7 @@ export interface Todo {
 export type TodoAction =
   | { type: 'ADD'; text: string }
   | { type: 'TOGGLE'; id: string }
+  | { type: 'EDIT'; id: string; text: string }
   | { type: 'DELETE'; id: string }
   | { type: 'CLEAR_COMPLETED' }
 
@@ -29,6 +30,10 @@ export function todoReducer(state: Todo[], action: TodoAction): Todo[] {
     case 'TOGGLE':
       return state.map((todo) =>
         todo.id === action.id ? { ...todo, completed: !todo.completed } : todo
+      )
+    case 'EDIT':
+      return state.map((todo) =>
+        todo.id === action.id ? { ...todo, text: action.text.trim() } : todo
       )
     case 'DELETE':
       return state.filter((todo) => todo.id !== action.id)
