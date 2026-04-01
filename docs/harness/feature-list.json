@@ -1,11 +1,12 @@
 {
   "project": "minimal-todo",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "created_at": "2026-03-31",
+  "updated_at": "2026-04-01",
   "completion_status": {
     "completed_features": 7,
-    "total_features": 7,
-    "completion_percentage": 100
+    "total_features": 8,
+    "completion_percentage": 87.5
   },
   "features": [
     {
@@ -117,6 +118,25 @@
         "当没有已完成条目时，验证该按钮不显示"
       ],
       "passes": true
+    },
+    {
+      "id": "feat-008",
+      "priority": "P0",
+      "category": "核心功能",
+      "title": "待办详情展开/编辑功能",
+      "description": "每条待办支持展开编辑长文本详情（notes）。悬停显示展开按钮提示，点击展开/收起 textarea 编辑区域。纯文本输入，自动保存到 localStorage，支持导入导出。",
+      "e2e_test_steps": [
+        "添加一条待办 '写文章'",
+        "悬停在该条目上，验证出现展开按钮（或视觉提示）",
+        "点击展开按钮，验证下方滑出 textarea 编辑区域",
+        "在 textarea 中输入多行文本：'灵感来源：xxx\n参考资料：yyy'",
+        "点击收起按钮，验证编辑区域收起",
+        "悬停在该条目上，验证显示'有详情'的视觉标记（如小圆点）",
+        "刷新页面，验证详情文本仍然存在",
+        "导出 JSON，验证包含 notes 字段",
+        "导入包含 notes 的 JSON，验证详情正确显示"
+      ],
+      "passes": false
     }
   ]
 }

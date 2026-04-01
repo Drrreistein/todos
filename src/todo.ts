@@ -26,6 +26,7 @@ export interface Todo {
   createdAt: number
   completedAt?: number  // 最近一次被标为完成的时间戳
   category?: string     // 分类 ID，默认 'work'
+  notes?: string        // 长文本详情/备注
 }
 
 // Action 类型
@@ -37,6 +38,7 @@ export type TodoAction =
   | { type: 'CLEAR_COMPLETED' }
   | { type: 'IMPORT'; todos: Todo[] }
   | { type: 'SET_CATEGORY'; id: string; category: string }
+  | { type: 'SET_NOTES'; id: string; notes: string }
 
 // Reducer
 export function todoReducer(state: Todo[], action: TodoAction): Todo[] {
@@ -73,6 +75,10 @@ export function todoReducer(state: Todo[], action: TodoAction): Todo[] {
     case 'SET_CATEGORY':
       return state.map((todo) =>
         todo.id === action.id ? { ...todo, category: action.category } : todo
+      )
+    case 'SET_NOTES':
+      return state.map((todo) =>
+        todo.id === action.id ? { ...todo, notes: action.notes } : todo
       )
     case 'IMPORT':
       return mergeTodos(state, action.todos)

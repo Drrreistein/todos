@@ -42,6 +42,31 @@ function IconTag() {
   )
 }
 
+function IconChevronDown() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function IconChevronUp() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path d="M18 15l-6-6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function IconNote() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" strokeLinecap="round" strokeLinejoin="round" />
+      <polyline points="14 2 14 8 20 8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 // ── 动态 Favicon 生成器 ─────────────────────────
 
 /** 用 Canvas 将 emoji 渲染成 SVG favicon */
@@ -180,7 +205,7 @@ function TabBar({ categories, activeId, counts, onChange }: TabBarProps) {
   )
 }
 
-// ── 单条待办（带行内编辑 + 分类标签）────────────
+// ── 单条待办（带行内编辑 + 分类标签 + 详情展开）────────────
 
 interface TodoItemProps {
   todo: Todo
@@ -188,15 +213,19 @@ interface TodoItemProps {
   onEdit: (id: string, text: string) => void
   onDelete: (id: string) => void
   onSetCategory: (id: string, category: string) => void
+  onSetNotes: (id: string, notes: string) => void
 }
 
-function TodoItem({ todo, onToggle, onEdit, onDelete, onSetCategory }: TodoItemProps) {
+function TodoItem({ todo, onToggle, onEdit, onDelete, onSetCategory, onSetNotes }: TodoItemProps) {
   const [editing, setEditing] = useState(false)
   const [showCatMenu, setShowCatMenu] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const [draft, setDraft] = useState(todo.text)
+  const [notesDraft, setNotesDraft] = useState(todo.notes || '')
   const editRef = useRef<HTMLInputElement>(null)
   const editComposingRef = useRef(false)
   const catMenuRef = useRef<HTMLDivElement>(null)
+  const notesRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     if (editing) {
@@ -204,6 +233,13 @@ function TodoItem({ todo, onToggle, onEdit, onDelete, onSetCategory }: TodoItemP
       editRef.current?.select()
     }
   }, [editing])
+
+  // 展开时自动聚焦 textarea
+  useEffect(() => {
+    if (expanded) {
+      notesRef.current?.focus()
+    }
+  }, [expanded])
 
   // 点击分类菜单外部关闭
   useEffect(() => {
@@ -246,88 +282,131 @@ function TodoItem({ todo, onToggle, onEdit, onDelete, onSetCategory }: TodoItemP
     }
   }
 
+  function handleNotesChange(value: string) {
+    setNotesDraft(value)
+    onSetNotes(todo.id, value)
+  }
+
   const cat = CATEGORY_MAP[todo.category || 'work']
+  const hasNotes = Boolean(todo.notes && todo.notes.trim())
 
   return (
-    <li className="todo-item">
-      {/* 复选框 */}
-      <button
-        className={`checkbox-btn${todo.completed ? ' checked' : ''}`}
-        onClick={() => onToggle(todo.id)}
-        aria-label={todo.completed ? '标记为未完成' : '标记为完成'}
-        aria-pressed={todo.completed}
-        style={todo.completed ? {} : { borderColor: cat.color }}
-      >
-        <IconCheck />
-      </button>
-
-      {/* 文字 / 编辑输入框 */}
-      {editing ? (
-        <input
-          ref={editRef}
-          className="todo-edit-input"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={handleEditKeyDown}
-          onCompositionStart={() => { editComposingRef.current = true }}
-          onCompositionEnd={() => { editComposingRef.current = false }}
-          onBlur={commitEdit}
-          aria-label="编辑待办事项"
-        />
-      ) : (
-        <span
-          className={`todo-text${todo.completed ? ' done' : ''}`}
-          onDoubleClick={startEdit}
-          title="双击编辑"
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'F2') startEdit() }}
-          aria-label={`${todo.text}，双击编辑`}
-        >
-          {todo.text}
-        </span>
-      )}
-
-      {/* 分类标签按钮 */}
-      {!editing && (
-        <div className="cat-menu-wrap" ref={catMenuRef}>
-          <button
-            className="cat-tag-btn"
-            onClick={() => setShowCatMenu(v => !v)}
-            aria-label={`分类：${cat.name}`}
-            title={`分类：${cat.name}`}
-            style={{ color: cat.color }}
-          >
-            <IconTag />
-          </button>
-
-          {showCatMenu && (
-            <div className="cat-menu-popup" role="menu">
-              {DEFAULT_CATEGORIES.filter(c => c.id !== 'all').map(c => (
-                <button
-                  key={c.id}
-                  className={`cat-menu-item${c.id === (todo.category || 'work') ? ' active' : ''}`}
-                  role="menuitem"
-                  onClick={() => { onSetCategory(todo.id, c.id); setShowCatMenu(false) }}
-                >
-                  <span>{c.icon}</span>
-                  <span>{c.name}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 删除 */}
-      {!editing && (
+    <li className={`todo-item-wrap${expanded ? ' expanded' : ''}`}>
+      <div className="todo-item">
+        {/* 复选框 */}
         <button
-          className="delete-btn"
-          onClick={() => onDelete(todo.id)}
-          aria-label={`删除：${todo.text}`}
+          className={`checkbox-btn${todo.completed ? ' checked' : ''}`}
+          onClick={() => onToggle(todo.id)}
+          aria-label={todo.completed ? '标记为未完成' : '标记为完成'}
+          aria-pressed={todo.completed}
+          style={todo.completed ? {} : { borderColor: cat.color }}
         >
-          <IconX />
+          <IconCheck />
         </button>
+
+        {/* 文字 / 编辑输入框 */}
+        {editing ? (
+          <input
+            ref={editRef}
+            className="todo-edit-input"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={handleEditKeyDown}
+            onCompositionStart={() => { editComposingRef.current = true }}
+            onCompositionEnd={() => { editComposingRef.current = false }}
+            onBlur={commitEdit}
+            aria-label="编辑待办事项"
+          />
+        ) : (
+          <span
+            className={`todo-text${todo.completed ? ' done' : ''}`}
+            onDoubleClick={startEdit}
+            title="双击编辑"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'F2') startEdit() }}
+            aria-label={`${todo.text}，双击编辑`}
+          >
+            {todo.text}
+          </span>
+        )}
+
+        {/* 有详情标记 */}
+        {!editing && hasNotes && (
+          <span className="note-indicator" title="有详情">
+            <IconNote />
+          </span>
+        )}
+
+        {/* 展开/收起按钮 */}
+        {!editing && (
+          <button
+            className="expand-btn"
+            onClick={() => setExpanded(v => !v)}
+            aria-label={expanded ? '收起详情' : '展开详情'}
+            title={expanded ? '收起详情' : '展开详情'}
+            aria-expanded={expanded}
+          >
+            {expanded ? <IconChevronUp /> : <IconChevronDown />}
+          </button>
+        )}
+
+        {/* 分类标签按钮 */}
+        {!editing && (
+          <div className="cat-menu-wrap" ref={catMenuRef}>
+            <button
+              className="cat-tag-btn"
+              onClick={() => setShowCatMenu(v => !v)}
+              aria-label={`分类：${cat.name}`}
+              title={`分类：${cat.name}`}
+              style={{ color: cat.color }}
+            >
+              <IconTag />
+            </button>
+
+            {showCatMenu && (
+              <div className="cat-menu-popup" role="menu">
+                {DEFAULT_CATEGORIES.filter(c => c.id !== 'all').map(c => (
+                  <button
+                    key={c.id}
+                    className={`cat-menu-item${c.id === (todo.category || 'work') ? ' active' : ''}`}
+                    role="menuitem"
+                    onClick={() => { onSetCategory(todo.id, c.id); setShowCatMenu(false) }}
+                  >
+                    <span>{c.icon}</span>
+                    <span>{c.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 删除 */}
+        {!editing && (
+          <button
+            className="delete-btn"
+            onClick={() => onDelete(todo.id)}
+            aria-label={`删除：${todo.text}`}
+          >
+            <IconX />
+          </button>
+        )}
+      </div>
+
+      {/* 详情编辑区域 */}
+      {expanded && (
+        <div className="todo-notes">
+          <textarea
+            ref={notesRef}
+            className="notes-textarea"
+            placeholder="添加备注、灵感或信息来源…"
+            value={notesDraft}
+            onChange={(e) => handleNotesChange(e.target.value)}
+            rows={3}
+            aria-label="待办详情"
+          />
+        </div>
       )}
     </li>
   )
@@ -457,6 +536,7 @@ export default function App() {
               onEdit={(id, text) => dispatch({ type: 'EDIT', id, text })}
               onDelete={(id) => dispatch({ type: 'DELETE', id })}
               onSetCategory={(id, category) => dispatch({ type: 'SET_CATEGORY', id, category })}
+              onSetNotes={(id, notes) => dispatch({ type: 'SET_NOTES', id, notes })}
             />
           ))}
         </ul>

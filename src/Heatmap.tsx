@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef, useState, useEffect } from 'react'
 import type { Todo } from './todo'
 
 // ── 工具函数 ──────────────────────────────────
@@ -32,6 +32,7 @@ interface HeatmapProps {
 
 const WEEKS = 16       // 显示最近 16 周
 const DAYS = WEEKS * 7 // = 112 天
+const GAP = 3          // 格子间距（px），固定值
 
 // 颜色档次：0 无完成，1~4 由浅到深
 const LEVEL_COLORS = ['#f0f0f0', '#d4d4d4', '#a3a3a3', '#525252', '#1a1a1a']
@@ -45,6 +46,23 @@ function getLevel(count: number): number {
 }
 
 export default function Heatmap({ todos }: HeatmapProps) {
+  // 用 ResizeObserver 测量容器宽度，反推格子尺寸
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const [cellSize, setCellSize] = useState(11)
+
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const observer = new ResizeObserver(([entry]) => {
+      const available = entry.contentRect.width
+      // available = WEEKS * cellSize + (WEEKS - 1) * GAP
+      // => cellSize = (available - (WEEKS - 1) * GAP) / WEEKS
+      const size = Math.floor((available - (WEEKS - 1) * GAP) / WEEKS)
+      setCellSize(Math.max(size, 6)) // 最小 6px，防止太窄
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
   // 统计每天完成数量
   const countMap = useMemo<Record<string, number>>(() => {
     const map: Record<string, number> = {}
@@ -87,15 +105,11 @@ export default function Heatmap({ todos }: HeatmapProps) {
     const col = columns[colIdx]
     if (!col || col.length === 0) return ''
     const firstDay = col[0].date
-    // 第一列 或 当前列第一天的月份 ≠ 上一列第一天的月份时，显示月份
     if (colIdx === 0 || firstDay.getMonth() !== columns[colIdx - 1][0].date.getMonth()) {
       return `${firstDay.getMonth() + 1}月`
     }
     return ''
   }
-
-  const CELL_SIZE = 11
-  const GAP = 3
 
   return (
     <section className="heatmap-section" aria-label="每日完成热力图">
@@ -104,14 +118,15 @@ export default function Heatmap({ todos }: HeatmapProps) {
         <span className="heatmap-subtitle">{totalCompleted} 项已完成 · 最近 {WEEKS} 周</span>
       </div>
 
-      <div className="heatmap-wrap">
+      {/* wrapRef 绑在这里，ResizeObserver 观测此元素 */}
+      <div className="heatmap-wrap" ref={wrapRef}>
         {/* 月份标签行 */}
         <div className="heatmap-months" style={{ gap: GAP }}>
           {columns.map((_, colIdx) => (
             <div
               key={colIdx}
               className="heatmap-month-label"
-              style={{ width: CELL_SIZE }}
+              style={{ width: cellSize }}
             >
               {getMonthLabel(colIdx)}
             </div>
@@ -132,8 +147,8 @@ export default function Heatmap({ todos }: HeatmapProps) {
                     key={key}
                     className={`heatmap-cell${isToday ? ' today' : ''}`}
                     style={{
-                      width: CELL_SIZE,
-                      height: CELL_SIZE,
+                      width: cellSize,
+                      height: cellSize,
                       backgroundColor: LEVEL_COLORS[level],
                     }}
                     title={label}
@@ -153,7 +168,7 @@ export default function Heatmap({ todos }: HeatmapProps) {
             <div
               key={i}
               className="heatmap-cell"
-              style={{ width: CELL_SIZE, height: CELL_SIZE, backgroundColor: color }}
+              style={{ width: cellSize, height: cellSize, backgroundColor: color }}
             />
           ))}
           <span className="legend-label">多</span>
