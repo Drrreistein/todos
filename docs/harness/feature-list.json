@@ -136,7 +136,7 @@
         "导出 JSON，验证包含 notes 字段",
         "导入包含 notes 的 JSON，验证详情正确显示"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }
