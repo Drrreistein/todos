@@ -72,6 +72,90 @@ input {
   user-select: none;
 }
 
+.app-subtitle {
+  margin-top: 6px;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+/* ── 分类 Tab 栏 ── */
+.tab-bar {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 28px;
+  padding: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tab-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 9px 6px;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  border-radius: calc(var(--radius-md) - 2px);
+  transition: all var(--transition);
+  white-space: nowrap;
+  position: relative;
+}
+
+.tab-item:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+}
+
+.tab-item.active {
+  color: #fff;
+  background: var(--tab-color, var(--color-text-primary));
+  font-weight: 500;
+}
+
+.tab-item.active:hover {
+  color: #fff;
+  opacity: 0.9;
+}
+
+.tab-icon {
+  font-size: 0.9375rem;
+  line-height: 1;
+}
+
+.tab-label {
+  line-height: 1;
+}
+
+.tab-badge {
+  font-size: 0.625rem;
+  font-weight: 600;
+  min-width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  line-height: 1;
+}
+
+.tab-item:not(.active) .tab-badge {
+  background: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
 /* ── 输入区域 ── */
 .input-area {
   display: flex;
@@ -231,6 +315,68 @@ input {
   padding: 0 2px;
   line-height: 1.5;
   border-radius: 0;
+}
+
+/* ── 分类标签按钮 ── */
+.cat-menu-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.cat-tag-btn {
+  padding: 3px;
+  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  transition: color var(--transition), background-color var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cat-tag-btn:hover {
+  background-color: #f3f4f6;
+}
+
+.cat-tag-btn svg {
+  width: 13px;
+  height: 13px;
+  stroke-width: 1.75;
+}
+
+.cat-menu-popup {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  min-width: 120px;
+  z-index: 50;
+}
+
+.cat-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  text-align: left;
+  transition: background var(--transition), color var(--transition);
+}
+
+.cat-menu-item:hover {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+}
+
+.cat-menu-item.active {
+  color: var(--color-text-primary);
+  font-weight: 500;
+  background: var(--color-bg);
 }
 
 /* ── 删除按钮 ── */

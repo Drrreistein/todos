@@ -1,3 +1,23 @@
+// 预设分类
+export interface Category {
+  id: string
+  name: string
+  color: string       // 主题色（用于 Tab 和 favicon）
+  icon: string        // emoji icon
+}
+
+export const DEFAULT_CATEGORIES: Category[] = [
+  { id: 'all',       name: '全部',   color: '#1a1a1a', icon: '📋' },
+  { id: 'work',      name: '工作',   color: '#2563eb', icon: '💼' },
+  { id: 'personal',  name: '生活',   color: '#16a34a', icon: '🏠' },
+  { id: 'study',     name: '学习',   color: '#9333ea', icon: '📚' },
+  { id: 'health',    name: '健康',   color: '#dc2626', icon: '🏃' },
+]
+
+export const CATEGORY_MAP = Object.fromEntries(
+  DEFAULT_CATEGORIES.map(c => [c.id, c])
+)
+
 // 待办事项类型定义
 export interface Todo {
   id: string
@@ -5,16 +25,18 @@ export interface Todo {
   completed: boolean
   createdAt: number
   completedAt?: number  // 最近一次被标为完成的时间戳
+  category?: string     // 分类 ID，默认 'work'
 }
 
 // Action 类型
 export type TodoAction =
-  | { type: 'ADD'; text: string }
+  | { type: 'ADD'; text: string; category?: string }
   | { type: 'TOGGLE'; id: string }
   | { type: 'EDIT'; id: string; text: string }
   | { type: 'DELETE'; id: string }
   | { type: 'CLEAR_COMPLETED' }
   | { type: 'IMPORT'; todos: Todo[] }
+  | { type: 'SET_CATEGORY'; id: string; category: string }
 
 // Reducer
 export function todoReducer(state: Todo[], action: TodoAction): Todo[] {
@@ -26,6 +48,7 @@ export function todoReducer(state: Todo[], action: TodoAction): Todo[] {
           text: action.text.trim(),
           completed: false,
           createdAt: Date.now(),
+          category: action.category || 'work',
         },
         ...state,
       ]
@@ -47,6 +70,10 @@ export function todoReducer(state: Todo[], action: TodoAction): Todo[] {
       return state.filter((todo) => todo.id !== action.id)
     case 'CLEAR_COMPLETED':
       return state.filter((todo) => !todo.completed)
+    case 'SET_CATEGORY':
+      return state.map((todo) =>
+        todo.id === action.id ? { ...todo, category: action.category } : todo
+      )
     case 'IMPORT':
       return mergeTodos(state, action.todos)
     default:
@@ -60,7 +87,10 @@ const STORAGE_KEY = 'minimal-todo-v1'
 export function loadTodos(): Todo[] {
   try {
     const data = localStorage.getItem(STORAGE_KEY)
-    return data ? (JSON.parse(data) as Todo[]) : []
+    if (!data) return []
+    const todos = JSON.parse(data) as Todo[]
+    // 兼容旧数据：没有 category 字段的自动归入 'work'
+    return todos.map(t => ({ ...t, category: t.category || 'work' }))
   } catch {
     return []
   }

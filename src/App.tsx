@@ -1,5 +1,9 @@
-import { useReducer, useEffect, useState, useRef } from 'react'
-import { todoReducer, loadTodos, saveTodos, exportTodos, parseTodosFromJson, type Todo } from './todo'
+import { useReducer, useEffect, useState, useRef, useCallback } from 'react'
+import {
+  todoReducer, loadTodos, saveTodos, exportTodos, parseTodosFromJson,
+  DEFAULT_CATEGORIES, CATEGORY_MAP,
+  type Todo, type Category,
+} from './todo'
 import Heatmap from './Heatmap'
 
 // ── SVG 图标（内联，零依赖）────────────────────
@@ -28,6 +32,29 @@ function IconX() {
   )
 }
 
+function IconTag() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"
+        strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="7" y1="7" x2="7.01" y2="7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+// ── 动态 Favicon 生成器 ─────────────────────────
+
+/** 用 Canvas 将 emoji 渲染成 SVG favicon */
+function generateFavicon(emoji: string, color: string): string {
+  // 创建一个 SVG favicon，背景为分类主题色，中间放 emoji
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <rect width="100" height="100" rx="20" fill="${color}"/>
+    <text x="50" y="68" font-size="56" text-anchor="middle" dominant-baseline="middle"
+      font-family="Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif">${emoji}</text>
+  </svg>`
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`
+}
+
 // ── 隐蔽的导入/导出菜单 ──────────────────────────
 
 interface DataMenuProps {
@@ -41,7 +68,6 @@ function DataMenu({ todos, onImport }: DataMenuProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // 点击菜单外部关闭
   useEffect(() => {
     if (!open) return
     function handleClick(e: MouseEvent) {
@@ -79,14 +105,12 @@ function DataMenu({ todos, onImport }: DataMenuProps) {
       }
     }
     reader.readAsText(file)
-    // 重置，允许再次选同一文件
     e.target.value = ''
     setOpen(false)
   }
 
   return (
     <div className="data-menu-wrap" ref={menuRef}>
-      {/* 触发按钮：固定在右下角 */}
       <button
         className="data-menu-trigger"
         onClick={() => setOpen((v) => !v)}
@@ -96,7 +120,6 @@ function DataMenu({ todos, onImport }: DataMenuProps) {
         ···
       </button>
 
-      {/* 弹出菜单 */}
       {open && (
         <div className="data-menu-popup" role="menu">
           <button className="data-menu-item" onClick={handleExport} role="menuitem">
@@ -108,7 +131,6 @@ function DataMenu({ todos, onImport }: DataMenuProps) {
         </div>
       )}
 
-      {/* 隐藏文件输入 */}
       <input
         ref={fileRef}
         type="file"
@@ -117,34 +139,83 @@ function DataMenu({ todos, onImport }: DataMenuProps) {
         onChange={handleFileChange}
       />
 
-      {/* 轻提示 */}
       {hint && <div className="data-menu-hint">{hint}</div>}
     </div>
   )
 }
 
-// ── 单条待办（带行内编辑）────────────────────────
+// ── 分类 Tab 栏 ──────────────────────────────
+
+interface TabBarProps {
+  categories: Category[]
+  activeId: string
+  counts: Record<string, number>
+  onChange: (id: string) => void
+}
+
+function TabBar({ categories, activeId, counts, onChange }: TabBarProps) {
+  return (
+    <nav className="tab-bar" role="tablist" aria-label="分类切换">
+      {categories.map(cat => {
+        const isActive = cat.id === activeId
+        const count = cat.id === 'all'
+          ? Object.values(counts).reduce((s, n) => s + n, 0)
+          : (counts[cat.id] ?? 0)
+        return (
+          <button
+            key={cat.id}
+            className={`tab-item${isActive ? ' active' : ''}`}
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => onChange(cat.id)}
+            style={isActive ? { '--tab-color': cat.color } as React.CSSProperties : undefined}
+          >
+            <span className="tab-icon">{cat.icon}</span>
+            <span className="tab-label">{cat.name}</span>
+            {count > 0 && <span className="tab-badge">{count}</span>}
+          </button>
+        )
+      })}
+    </nav>
+  )
+}
+
+// ── 单条待办（带行内编辑 + 分类标签）────────────
 
 interface TodoItemProps {
   todo: Todo
   onToggle: (id: string) => void
   onEdit: (id: string, text: string) => void
   onDelete: (id: string) => void
+  onSetCategory: (id: string, category: string) => void
 }
 
-function TodoItem({ todo, onToggle, onEdit, onDelete }: TodoItemProps) {
+function TodoItem({ todo, onToggle, onEdit, onDelete, onSetCategory }: TodoItemProps) {
   const [editing, setEditing] = useState(false)
+  const [showCatMenu, setShowCatMenu] = useState(false)
   const [draft, setDraft] = useState(todo.text)
   const editRef = useRef<HTMLInputElement>(null)
   const editComposingRef = useRef(false)
+  const catMenuRef = useRef<HTMLDivElement>(null)
 
-  // 进入编辑模式时聚焦并全选
   useEffect(() => {
     if (editing) {
       editRef.current?.focus()
       editRef.current?.select()
     }
   }, [editing])
+
+  // 点击分类菜单外部关闭
+  useEffect(() => {
+    if (!showCatMenu) return
+    function handleClick(e: MouseEvent) {
+      if (catMenuRef.current && !catMenuRef.current.contains(e.target as Node)) {
+        setShowCatMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [showCatMenu])
 
   function startEdit() {
     setDraft(todo.text)
@@ -156,7 +227,7 @@ function TodoItem({ todo, onToggle, onEdit, onDelete }: TodoItemProps) {
     if (text && text !== todo.text) {
       onEdit(todo.id, text)
     } else {
-      setDraft(todo.text) // 放弃空内容修改
+      setDraft(todo.text)
     }
     setEditing(false)
   }
@@ -175,6 +246,8 @@ function TodoItem({ todo, onToggle, onEdit, onDelete }: TodoItemProps) {
     }
   }
 
+  const cat = CATEGORY_MAP[todo.category || 'work']
+
   return (
     <li className="todo-item">
       {/* 复选框 */}
@@ -183,6 +256,7 @@ function TodoItem({ todo, onToggle, onEdit, onDelete }: TodoItemProps) {
         onClick={() => onToggle(todo.id)}
         aria-label={todo.completed ? '标记为未完成' : '标记为完成'}
         aria-pressed={todo.completed}
+        style={todo.completed ? {} : { borderColor: cat.color }}
       >
         <IconCheck />
       </button>
@@ -214,6 +288,37 @@ function TodoItem({ todo, onToggle, onEdit, onDelete }: TodoItemProps) {
         </span>
       )}
 
+      {/* 分类标签按钮 */}
+      {!editing && (
+        <div className="cat-menu-wrap" ref={catMenuRef}>
+          <button
+            className="cat-tag-btn"
+            onClick={() => setShowCatMenu(v => !v)}
+            aria-label={`分类：${cat.name}`}
+            title={`分类：${cat.name}`}
+            style={{ color: cat.color }}
+          >
+            <IconTag />
+          </button>
+
+          {showCatMenu && (
+            <div className="cat-menu-popup" role="menu">
+              {DEFAULT_CATEGORIES.filter(c => c.id !== 'all').map(c => (
+                <button
+                  key={c.id}
+                  className={`cat-menu-item${c.id === (todo.category || 'work') ? ' active' : ''}`}
+                  role="menuitem"
+                  onClick={() => { onSetCategory(todo.id, c.id); setShowCatMenu(false) }}
+                >
+                  <span>{c.icon}</span>
+                  <span>{c.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 删除 */}
       {!editing && (
         <button
@@ -232,9 +337,9 @@ function TodoItem({ todo, onToggle, onEdit, onDelete }: TodoItemProps) {
 
 export default function App() {
   const [todos, dispatch] = useReducer(todoReducer, [], loadTodos)
+  const [activeTab, setActiveTab] = useState('all')
   const [input, setInput] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
-  // IME 组字状态：true 表示正在用输入法选字，此时 Enter 不应提交
   const isComposingRef = useRef(false)
 
   // 每次 todos 变化时持久化
@@ -242,29 +347,71 @@ export default function App() {
     saveTodos(todos)
   }, [todos])
 
-  // 提交新待办
+  // 动态 favicon：切换 Tab 时更新
+  useEffect(() => {
+    const cat = CATEGORY_MAP[activeTab]
+    if (!cat) return
+    const url = generateFavicon(cat.icon, cat.color)
+    // 查找或创建 favicon link
+    let link = document.querySelector<HTMLLinkElement>("link[rel='icon']")
+    if (!link) {
+      link = document.createElement('link')
+      link.rel = 'icon'
+      link.type = 'image/svg+xml'
+      document.head.appendChild(link)
+    }
+    link.href = url
+    // 更新页面标题
+    document.title = `${cat.icon} ${cat.name} · todos`
+  }, [activeTab])
+
+  // 统计各分类待完成数
+  const counts = useCallback(() => {
+    const map: Record<string, number> = {}
+    for (const t of todos) {
+      if (t.completed) continue
+      const c = t.category || 'work'
+      map[c] = (map[c] ?? 0) + 1
+    }
+    return map
+  }, [todos])
+
+  // 当前 Tab 过滤后的 todos
+  const filteredTodos = activeTab === 'all'
+    ? todos
+    : todos.filter(t => (t.category || 'work') === activeTab)
+
   function handleSubmit() {
     const text = input.trim()
     if (!text) return
-    dispatch({ type: 'ADD', text })
+    const category = activeTab === 'all' ? 'work' : activeTab
+    dispatch({ type: 'ADD', text, category })
     setInput('')
     inputRef.current?.focus()
   }
 
-  // 键盘事件：IME 组字期间忽略 Enter
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && !isComposingRef.current) handleSubmit()
   }
 
-  const remaining = todos.filter((t) => !t.completed).length
-  const hasCompleted = todos.some((t) => t.completed)
+  const remaining = filteredTodos.filter((t) => !t.completed).length
+  const hasCompleted = filteredTodos.some((t) => t.completed)
 
   return (
     <main className="app">
       {/* 标题 */}
       <header className="app-header">
         <h1 className="app-title">todos</h1>
+        <p className="app-subtitle">你的待办，一目了然</p>
       </header>
+
+      {/* 分类 Tab 栏 */}
+      <TabBar
+        categories={DEFAULT_CATEGORIES}
+        activeId={activeTab}
+        counts={counts()}
+        onChange={setActiveTab}
+      />
 
       {/* 输入区域 */}
       <div className="input-area">
@@ -272,7 +419,11 @@ export default function App() {
           ref={inputRef}
           className="todo-input"
           type="text"
-          placeholder="添加待办事项…"
+          placeholder={
+            activeTab === 'all'
+              ? '添加待办事项…'
+              : `添加${CATEGORY_MAP[activeTab]?.name}待办…`
+          }
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -292,24 +443,27 @@ export default function App() {
       </div>
 
       {/* 待办列表 */}
-      {todos.length === 0 ? (
-        <p className="empty-state">没有待办事项</p>
+      {filteredTodos.length === 0 ? (
+        <p className="empty-state">
+          {activeTab === 'all' ? '没有待办事项' : `没有${CATEGORY_MAP[activeTab]?.name}待办`}
+        </p>
       ) : (
         <ul className="todo-list" aria-label="待办列表">
-          {todos.map((todo) => (
+          {filteredTodos.map((todo) => (
             <TodoItem
               key={todo.id}
               todo={todo}
               onToggle={(id) => dispatch({ type: 'TOGGLE', id })}
               onEdit={(id, text) => dispatch({ type: 'EDIT', id, text })}
               onDelete={(id) => dispatch({ type: 'DELETE', id })}
+              onSetCategory={(id, category) => dispatch({ type: 'SET_CATEGORY', id, category })}
             />
           ))}
         </ul>
       )}
 
       {/* 底部状态栏 */}
-      {todos.length > 0 && (
+      {filteredTodos.length > 0 && (
         <footer className="footer">
           <span className="item-count">
             {remaining === 0
@@ -327,8 +481,8 @@ export default function App() {
         </footer>
       )}
 
-      {/* 每日完成热力图 */}
-      <Heatmap todos={todos} />
+      {/* 每日完成热力图（仅在"全部"Tab 显示） */}
+      {activeTab === 'all' && <Heatmap todos={todos} />}
 
       {/* 隐蔽的导入/导出入口 */}
       <DataMenu
