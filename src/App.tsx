@@ -220,12 +220,14 @@ function TodoItem({ todo, onToggle, onEdit, onDelete, onSetCategory, onSetNotes 
   const [editing, setEditing] = useState(false)
   const [showCatMenu, setShowCatMenu] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
   const [draft, setDraft] = useState(todo.text)
   const [notesDraft, setNotesDraft] = useState(todo.notes || '')
   const editRef = useRef<HTMLInputElement>(null)
   const editComposingRef = useRef(false)
   const catMenuRef = useRef<HTMLDivElement>(null)
   const notesRef = useRef<HTMLTextAreaElement>(null)
+  const previewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (editing) {
@@ -290,8 +292,31 @@ function TodoItem({ todo, onToggle, onEdit, onDelete, onSetCategory, onSetNotes 
   const cat = CATEGORY_MAP[todo.category || 'work']
   const hasNotes = Boolean(todo.notes && todo.notes.trim())
 
+  // 悬停预览逻辑
+  const handleMouseEnter = () => {
+    if (previewTimeoutRef.current) {
+      clearTimeout(previewTimeoutRef.current)
+    }
+    if (hasNotes && !expanded) {
+      previewTimeoutRef.current = setTimeout(() => {
+        setShowPreview(true)
+      }, 300)
+    }
+  }
+
+  const handleMouseLeave = () => {
+    if (previewTimeoutRef.current) {
+      clearTimeout(previewTimeoutRef.current)
+    }
+    setShowPreview(false)
+  }
+
   return (
-    <li className={`todo-item-wrap${expanded ? ' expanded' : ''}`}>
+    <li 
+      className={`todo-item-wrap${expanded ? ' expanded' : ''}`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       <div className="todo-item">
         {/* 复选框 */}
         <button
@@ -393,6 +418,15 @@ function TodoItem({ todo, onToggle, onEdit, onDelete, onSetCategory, onSetNotes 
           </button>
         )}
       </div>
+
+      {/* 悬停预览浮层 */}
+      {showPreview && hasNotes && !expanded && (
+        <div className="notes-preview-popup">
+          <div className="notes-preview-content">
+            {todo.notes}
+          </div>
+        </div>
+      )}
 
       {/* 详情编辑区域 */}
       {expanded && (
