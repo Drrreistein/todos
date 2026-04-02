@@ -4,6 +4,7 @@ import {
   DEFAULT_CATEGORIES, CATEGORY_MAP,
   type Todo, type Category,
 } from './todo'
+import { processAgentInput, type CliResult } from './agent-cli'
 import Heatmap from './Heatmap'
 
 // ── SVG 图标（内联，零依赖）────────────────────
@@ -448,10 +449,90 @@ function TodoItem({ todo, onToggle, onEdit, onDelete, onSetCategory, onSetNotes 
 
 // ── 主应用组件 ────────────────────────────────
 
+// ── Agent CLI 面板 ─────────────────────────────
+
+interface AgentPanelProps {
+  onExecute: (input: string) => void
+  lastResult: CliResult | null
+}
+
+function AgentPanel({ onExecute, lastResult }: AgentPanelProps) {
+  const [input, setInput] = useState('')
+  const [history, setHistory] = useState<string[]>([])
+  const [historyIndex, setHistoryIndex] = useState(-1)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleSubmit = () => {
+    const trimmed = input.trim()
+    if (!trimmed) return
+    onExecute(trimmed)
+    setHistory(prev => [...prev, trimmed])
+    setHistoryIndex(-1)
+    setInput('')
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSubmit()
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (history.length > 0 && historyIndex < history.length - 1) {
+        const newIndex = historyIndex + 1
+        setHistoryIndex(newIndex)
+        setInput(history[history.length - 1 - newIndex])
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      if (historyIndex > 0) {
+        const newIndex = historyIndex - 1
+        setHistoryIndex(newIndex)
+        setInput(history[history.length - 1 - newIndex])
+      } else if (historyIndex === 0) {
+        setHistoryIndex(-1)
+        setInput('')
+      }
+    }
+  }
+
+  return (
+    <div className="agent-panel">
+      <div className="agent-header">
+        <span className="agent-label">🤖 Agent</span>
+        <span className="agent-hint">输入命令或自然语言</span>
+      </div>
+      <div className="agent-input-wrap">
+        <span className="agent-prompt">&gt;</span>
+        <input
+          ref={inputRef}
+          className="agent-input"
+          type="text"
+          placeholder="例如: 添加写文章 #工作 @灵感来源xxx"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          aria-label="Agent 命令输入"
+        />
+        <button className="agent-submit" onClick={handleSubmit} aria-label="执行">
+          <IconChevronDown />
+        </button>
+      </div>
+      {lastResult && (
+        <div className={`agent-result ${lastResult.success ? 'success' : 'error'}`}>
+          <pre>{lastResult.message}</pre>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── 主应用组件 ────────────────────────────────
+
 export default function App() {
   const [todos, dispatch] = useReducer(todoReducer, [], loadTodos)
   const [activeTab, setActiveTab] = useState('all')
   const [input, setInput] = useState('')
+  const [agentResult, setAgentResult] = useState<CliResult | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const isComposingRef = useRef(false)
 
@@ -505,6 +586,17 @@ export default function App() {
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && !isComposingRef.current) handleSubmit()
+  }
+
+  // Agent CLI 执行回调
+  function handleAgentExecute(input: string) {
+    const result = processAgentInput(input)
+    setAgentResult(result)
+    
+    // 同步到 React state
+    if (result.todos) {
+      dispatch({ type: 'IMPORT', todos: result.todos })
+    }
   }
 
   const remaining = filteredTodos.filter((t) => !t.completed).length
@@ -597,6 +689,9 @@ export default function App() {
 
       {/* 每日完成热力图（仅在"全部"Tab 显示） */}
       {activeTab === 'all' && <Heatmap todos={todos} />}
+
+      {/* Agent CLI 面板 */}
+      <AgentPanel onExecute={handleAgentExecute} lastResult={agentResult} />
 
       {/* 隐蔽的导入/导出入口 */}
       <DataMenu

@@ -1,12 +1,12 @@
 {
   "project": "minimal-todo",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "created_at": "2026-03-31",
-  "updated_at": "2026-04-01",
+  "updated_at": "2026-04-02",
   "completion_status": {
-    "completed_features": 7,
-    "total_features": 8,
-    "completion_percentage": 87.5
+    "completed_features": 9,
+    "total_features": 9,
+    "completion_percentage": 100
   },
   "features": [
     {
@@ -135,6 +135,26 @@
         "刷新页面，验证详情文本仍然存在",
         "导出 JSON，验证包含 notes 字段",
         "导入包含 notes 的 JSON，验证详情正确显示"
+      ],
+      "passes": true
+    },
+    {
+      "id": "feat-009",
+      "priority": "P1",
+      "category": "Agent 接口",
+      "title": "Agent CLI 命令行接口",
+      "description": "页面左下角提供 Agent CLI 面板，支持通过自然语言命令增删改查待办事项。支持中英文命令别名，快捷语法 #分类 @备注，历史命令回溯（上下箭头），并暴露 window.todoAgent.exec() 供浏览器控制台调用。",
+      "e2e_test_steps": [
+        "验证页面左下角显示 Agent CLI 面板",
+        "输入 '添加测试任务 #工作 @备注内容'，按 Enter",
+        "验证面板显示成功结果，列表中出现新待办",
+        "输入 'list'，验证显示所有待办列表",
+        "输入 '完成 测试任务'，验证待办标记为已完成",
+        "输入 '编辑 测试任务 改为 修改后任务'，验证文字已更改",
+        "输入 '删除 修改后任务'，验证待办已从列表移除",
+        "输入 'help'，验证显示帮助信息",
+        "验证上下箭头可以浏览历史命令",
+        "打开浏览器控制台，执行 window.todoAgent.exec('添加控制台任务')，验证正常工作"
       ],
       "passes": true
     }
