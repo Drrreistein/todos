@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/heatmap.tsx","./src/main.tsx","./src/todo.ts"],"version":"5.9.3"}
+{"root":["./src/app.tsx","./src/heatmap.tsx","./src/agent-cli.ts","./src/main.tsx","./src/todo.ts"],"version":"5.9.3"}
