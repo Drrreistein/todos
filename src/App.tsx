@@ -658,9 +658,9 @@ export default function App() {
         setSyncStatus(event.status)
       }
       if (event.type === 'remote-update' && event.data) {
-        // 远程有新数据 → 导入到本地（覆盖）
+        // 远程有新数据 → 直接替换（确保删除操作也能同步）
         const remoteTodos = event.data as Todo[]
-        dispatch({ type: 'IMPORT', todos: remoteTodos })
+        dispatch({ type: 'REPLACE', todos: remoteTodos })
       }
       if (event.type === 'sync-error') {
         console.error('[Cloud]', event.error)
@@ -673,8 +673,8 @@ export default function App() {
   useEffect(() => {
     if (cloudStore.isEnabled()) {
       void cloudStore.pull().then((remoteTodos) => {
-        if (remoteTodos && remoteTodos.length > 0) {
-          dispatch({ type: 'IMPORT', todos: remoteTodos })
+        if (remoteTodos !== null) {  // null 表示无更新，[] 表示全部删除
+          dispatch({ type: 'REPLACE', todos: remoteTodos })
         }
       })
     }

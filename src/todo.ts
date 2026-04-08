@@ -36,7 +36,8 @@ export type TodoAction =
   | { type: 'EDIT'; id: string; text: string }
   | { type: 'DELETE'; id: string }
   | { type: 'CLEAR_COMPLETED' }
-  | { type: 'IMPORT'; todos: Todo[] }
+  | { type: 'IMPORT'; todos: Todo[] }       // 导入：合并去重（手动导入 JSON 时用）
+  | { type: 'REPLACE'; todos: Todo[] }      // 替换：整体覆盖（云端同步拉取时用）
   | { type: 'SET_CATEGORY'; id: string; category: string }
   | { type: 'SET_NOTES'; id: string; notes: string }
 
@@ -82,6 +83,9 @@ export function todoReducer(state: Todo[], action: TodoAction): Todo[] {
       )
     case 'IMPORT':
       return mergeTodos(state, action.todos)
+    case 'REPLACE':
+      // 云端拉取时直接替换，确保删除操作能同步
+      return action.todos
     default:
       return state
   }
