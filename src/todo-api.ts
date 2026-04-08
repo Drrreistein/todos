@@ -11,6 +11,7 @@
  */
 
 import { Todo, loadTodos, saveTodos, DEFAULT_CATEGORIES } from './todo'
+import { cloudStore } from './cloud-store'
 
 // Category 在存储中实际是 string (category id)
 type CategoryId = string
@@ -391,6 +392,28 @@ class TodoAgentAPI {
     }
   }
 
+  // ---- 云同步状态 ----
+
+  /** 获取云同步状态和配置信息 */
+  cloudStatus(): ApiResult<{
+    enabled: boolean
+    status: string
+    gistId?: string
+  }> {
+    const enabled = cloudStore.isEnabled()
+    const status = cloudStore.getStatus()
+    const config = cloudStore.getConfig()
+    return {
+      success: true,
+      message: enabled ? `云同步已开启 (${status})` : '本地模式（未配置云同步）',
+      data: {
+        enabled,
+        status,
+        gistId: config?.gistId,
+      },
+    }
+  }
+
   // ---- 自然语言接口（兼容旧版）----
 
   /**
@@ -481,7 +504,7 @@ class TodoAgentAPI {
 
   /** 帮助文本 */
   help(): string {
-    return `📋 Todo Agent API v2.0
+    return `📋 Todo Agent API v2.1 (Cloud Sync)
 
 结构化 API（推荐）:
   api.add({text, category?, notes?})     — 添加待办
@@ -496,12 +519,17 @@ class TodoAgentAPI {
   api.deleteBatch([...])                 — 批量删除
   api.clearCompleted()                   — 清除已完成
   api.stats()                            — 统计摘要
+  api.cloudStatus()                      — 云同步状态
   api.onChange(fn)                       — 监听变更事件
 
 自然语言兼容:
   exec("添加 写周报 #work @参考xxx")
   exec("完成 写周报")
   exec("list")
+
+云同步 (GitHub Gist):
+  配置后自动推送 + 每30s拉取远程变更
+  通过页面 UI 或 window.cloudStore.saveConfig() 设置
 
 分类: work(工作), personal(生活), study(学习), health(健康)`
   }

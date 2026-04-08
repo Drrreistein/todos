@@ -87,23 +87,38 @@ export function todoReducer(state: Todo[], action: TodoAction): Todo[] {
   }
 }
 
-// localStorage 工具
+// ── 存储层（localStorage + 云端同步）─────────────────
+
+import { cloudStore } from './cloud-store'
+
 const STORAGE_KEY = 'minimal-todo-v1'
 
-export function loadTodos(): Todo[] {
+/** 本地加载（纯 localStorage，不触发网络请求） */
+export function loadLocalTodos(): Todo[] {
   try {
     const data = localStorage.getItem(STORAGE_KEY)
     if (!data) return []
     const todos = JSON.parse(data) as Todo[]
-    // 兼容旧数据：没有 category 字段的自动归入 'work'
     return todos.map(t => ({ ...t, category: t.category || 'work' }))
   } catch {
     return []
   }
 }
 
+/** 加载待办（优先本地缓存，云存储在后台异步拉取） */
+export function loadTodos(): Todo[] {
+  return loadLocalTodos()
+}
+
+/** 保存到本地 + 触发云端推送 */
 export function saveTodos(todos: Todo[]): void {
+  // 始终先写入 localStorage（即时生效）
   localStorage.setItem(STORAGE_KEY, JSON.stringify(todos))
+
+  // 如果已配置云同步，异步推送到云端
+  if (cloudStore.isEnabled()) {
+    cloudStore.push(todos)
+  }
 }
 
 // ── 导出：下载 JSON 文件 ──────────────────────────

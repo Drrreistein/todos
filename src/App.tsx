@@ -5,6 +5,7 @@ import {
   type Todo, type Category,
 } from './todo'
 import { todoApi } from './todo-api'
+import { cloudStore, type SyncStatus } from './cloud-store'
 import Heatmap from './Heatmap'
 
 // ── SVG 图标（内联，零依赖）────────────────────
@@ -170,7 +171,184 @@ function DataMenu({ todos, onImport }: DataMenuProps) {
   )
 }
 
-// ── 分类 Tab 栏 ──────────────────────────────
+// ── 云同步状态徽标 ──────────────────────────────
+
+function CloudIconSyncing() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="spin-icon" aria-hidden>
+      <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2" />
+    </svg>
+  )
+}
+
+function CloudIconDone() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z" />
+    </svg>
+  )
+}
+
+function CloudIconOff() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z" />
+      <line x1="2" y1="2" x2="22" y2="22" strokeOpacity="0.4" />
+    </svg>
+  )
+}
+
+interface CloudSyncBadgeProps {
+  status: SyncStatus
+  isEnabled: boolean
+  onClick: () => void
+}
+
+function CloudSyncBadge({ status, isEnabled, onClick }: CloudSyncBadgeProps) {
+  const statusLabel = {
+    idle: isEnabled ? '已连接' : '本地模式',
+    syncing: '同步中…',
+    synced: '已同步',
+    error: '同步失败',
+    offline: '离线',
+  }
+
+  const icon = !isEnabled ? <CloudIconOff />
+    : status === 'syncing' ? <CloudIconSyncing />
+    : status === 'error' ? <CloudIconOff />
+    : <CloudIconDone />
+
+  return (
+    <button
+      className={`cloud-sync-badge ${status} ${!isEnabled ? 'local' : ''}`}
+      onClick={onClick}
+      title={`云同步: ${statusLabel[status]}（点击设置）`}
+      aria-label={`云同步状态: ${statusLabel[status]}`}
+    >
+      {icon}
+      <span className="cloud-status-text">{statusLabel[status]}</span>
+    </button>
+  )
+}
+
+// ── 云同步设置面板 ───────────────────────────────
+
+interface CloudSetupPanelProps {
+  token: string
+  gistId: string
+  isEnabled: boolean
+  status: SyncStatus
+  onTokenChange: (v: string) => void
+  onGistIdChange: (v: string) => void
+  onSave: () => void
+  onDisconnect: () => void
+  onClose: () => void
+}
+
+function CloudSetupPanel({
+  token, gistId, isEnabled, status,
+  onTokenChange, onGistIdChange,
+  onSave, onDisconnect, onClose,
+}: CloudSetupPanelProps) {
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        // 点击外部不关闭，让用户操作
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  return (
+    <div className="cloud-setup-overlay" onClick={onClose}>
+      <div className="cloud-setup-panel" ref={panelRef} onClick={e => e.stopPropagation()}>
+        <div className="cloud-setup-header">
+          <h3>☁️ 云端同步设置</h3>
+          <button className="cloud-setup-close" onClick={onClose} aria-label="关闭">✕</button>
+        </div>
+
+        <div className="cloud-setup-body">
+          {!isEnabled ? (
+            <>
+              <p className="cloud-setup-desc">
+                使用 GitHub Gist 存储待办数据，实现多端同步。
+                数据加密存储在你的 Gist 中，只有你能访问。
+              </p>
+
+              <label className="cloud-input-label">
+                GitHub Personal Access Token
+                <input
+                  type="password"
+                  className="cloud-input"
+                  placeholder="ghp_xxxxxxxxxxxx"
+                  value={token}
+                  onChange={e => onTokenChange(e.target.value)}
+                  autoComplete="off"
+                />
+                <span className="cloud-input-hint">
+                  需要 <code>gist</code> 权限。
+                  <a href="https://github.com/settings/tokens/new?scopes=gist&description=todo-app-sync"
+                     target="_blank" rel="noopener noreferrer">
+                    去生成 →
+                  </a>
+                </span>
+              </label>
+
+              <label className="cloud-input-label">
+                Gist ID
+                <input
+                  type="text"
+                  className="cloud-input"
+                  placeholder="abc123def456"
+                  value={gistId}
+                  onChange={e => onGistIdChange(e.target.value)}
+                />
+                <span className="cloud-input-hint">
+                  现有 Gist 的 ID（URL 中的那串字符），或留空自动创建。
+                </span>
+              </label>
+
+              <button
+                className="cloud-save-btn"
+                disabled={!token.trim() || !gistId.trim()}
+                onClick={onSave}
+              >
+                连接并同步
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="cloud-status-row">
+                <span>状态</span>
+                <span className={`cloud-status-badge ${status}`}>{status}</span>
+              </div>
+              <div className="cloud-status-row">
+                <span>Gist ID</span>
+                <code className="cloud-gist-id">{gistId}</code>
+                <a
+                  href={`https://gist.github.com/${gistId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="cloud-link"
+                >
+                  查看
+                </a>
+              </div>
+              <button className="cloud-disconnect-btn" onClick={onDisconnect}>
+                断开云同步（数据保留在本地）
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── 分类 Tab 栏 ──────────────────────────────────
 
 interface TabBarProps {
   categories: Category[]
@@ -458,6 +636,55 @@ export default function App() {
   const inputRef = useRef<HTMLInputElement>(null)
   const isComposingRef = useRef(false)
 
+  // ── 云同步状态 ──
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle')
+  const [showCloudSetup, setShowCloudSetup] = useState(false)
+  const [cloudToken, setCloudToken] = useState('')
+  const [cloudGistId, setCloudGistId] = useState('')
+
+  // 加载已保存的云配置
+  useEffect(() => {
+    const saved = cloudStore.loadConfig()
+    if (saved) {
+      setCloudToken(saved.token)
+      setCloudGistId(saved.gistId)
+    }
+  }, [])
+
+  // 监听云存储事件
+  useEffect(() => {
+    const unsub = cloudStore.onEvent((event) => {
+      if (event.type === 'status-change' && event.status) {
+        setSyncStatus(event.status)
+      }
+      if (event.type === 'remote-update' && event.data) {
+        // 远程有新数据 → 导入到本地（覆盖）
+        const remoteTodos = event.data as Todo[]
+        dispatch({ type: 'IMPORT', todos: remoteTodos })
+      }
+      if (event.type === 'sync-error') {
+        console.error('[Cloud]', event.error)
+      }
+    })
+    return unsub
+  }, [])
+
+  // 首次加载 + 配置变更时从云端拉取
+  useEffect(() => {
+    if (cloudStore.isEnabled()) {
+      void cloudStore.pull().then((remoteTodos) => {
+        if (remoteTodos && remoteTodos.length > 0) {
+          dispatch({ type: 'IMPORT', todos: remoteTodos })
+        }
+      })
+    }
+  }, []) // 仅组件挂载时执行一次
+
+  // 组件卸载时清理
+  useEffect(() => {
+    return () => { cloudStore.destroy() }
+  }, [])
+
   // 每次 todos 变化时持久化
   useEffect(() => {
     saveTodos(todos)
@@ -615,6 +842,38 @@ export default function App() {
         todos={todos}
         onImport={(imported) => dispatch({ type: 'IMPORT', todos: imported })}
       />
+
+      {/* 云同步状态 & 设置 */}
+      <CloudSyncBadge
+        status={syncStatus}
+        isEnabled={cloudStore.isEnabled()}
+        onClick={() => setShowCloudSetup(v => !v)}
+      />
+
+      {showCloudSetup && (
+        <CloudSetupPanel
+          token={cloudToken}
+          gistId={cloudGistId}
+          isEnabled={cloudStore.isEnabled()}
+          status={syncStatus}
+          onTokenChange={setCloudToken}
+          onGistIdChange={setCloudGistId}
+          onSave={() => {
+            if (cloudToken.trim() && cloudGistId.trim()) {
+              cloudStore.saveConfig({ token: cloudToken.trim(), gistId: cloudGistId.trim() })
+              setSyncStatus('syncing')
+            }
+          }}
+          onDisconnect={() => {
+            cloudStore.clearConfig()
+            setCloudToken('')
+            setCloudGistId('')
+            setSyncStatus('idle')
+            setShowCloudSetup(false)
+          }}
+          onClose={() => setShowCloudSetup(false)}
+        />
+      )}
     </main>
   )
 }
